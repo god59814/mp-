@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# App output / temp
+output/
+*.wav
+*.mp3
+*.m4a
+*.webm
+*.mp4
+cookies.txt
+.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
