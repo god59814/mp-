@@ -1,3 +1,6 @@
 faster-whisper
 yt-dlp[default]
 ctranslate2
+nvidia-cublas-cu12
+# 需與 ctranslate2 內建的 cudnn64_9.dll 9.10.2 對應
+nvidia-cudnn-cu12==9.10.2.21

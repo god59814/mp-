@@ -7,6 +7,82 @@ import time
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+_NVIDIA_DLL_DIRS: list[Path] = []
+
+
+def register_nvidia_dlls() -> None:
+    """把 pip 安裝的 CUDA DLL 目錄加進 Windows 載入路徑。"""
+    global _NVIDIA_DLL_DIRS
+    if os.name != "nt":
+        return
+
+    import importlib.util
+
+    packages = (
+        "nvidia.cublas",
+        "nvidia.cudnn",
+        "nvidia.cuda_nvrtc",
+        "nvidia.cuda_runtime",
+    )
+    dll_dirs: list[Path] = []
+    for name in packages:
+        spec = importlib.util.find_spec(name)
+        if spec is None or not spec.submodule_search_locations:
+            continue
+        for loc in spec.submodule_search_locations:
+            for sub in ("bin", "lib"):
+                dll_dir = Path(loc) / sub
+                if dll_dir.is_dir() and any(dll_dir.glob("*.dll")):
+                    dll_dirs.append(dll_dir)
+
+    _NVIDIA_DLL_DIRS = dll_dirs
+    if not dll_dirs:
+        return
+
+    os.environ["PATH"] = (
+        os.pathsep.join(str(directory) for directory in dll_dirs)
+        + os.pathsep
+        + os.environ.get("PATH", "")
+    )
+    for dll_dir in dll_dirs:
+        try:
+            os.add_dll_directory(str(dll_dir))
+        except (OSError, AttributeError):
+            pass
+
+
+def require_cuda_libraries() -> None:
+    """確認 cuBLAS / cuDNN 已安裝且可載入。"""
+    if os.name != "nt":
+        return
+
+    import ctypes
+
+    needed = ("cublas64_12.dll", "cublasLt64_12.dll", "cudnn_ops64_9.dll")
+    missing: list[str] = []
+    for name in needed:
+        dll_path = next(
+            (directory / name for directory in _NVIDIA_DLL_DIRS if (directory / name).is_file()),
+            None,
+        )
+        if dll_path is None:
+            missing.append(name)
+            continue
+        try:
+            ctypes.WinDLL(str(dll_path))
+        except OSError:
+            missing.append(name)
+
+    if missing:
+        raise RuntimeError(
+            "無法載入 CUDA 執行庫："
+            + "、".join(missing)
+            + "。請執行 python -m pip install -r requirements.txt"
+        )
+
+
+register_nvidia_dlls()
+
 import ctranslate2
 import yt_dlp
 from faster_whisper import WhisperModel
@@ -501,6 +577,8 @@ def build_whisper_model() -> WhisperModel:
             f"指定的 GPU index 不存在：device_index={DEVICE_INDEX}, "
             f"目前偵測到 {cuda_count} 張 CUDA GPU"
         )
+
+    require_cuda_libraries()
 
     log_info(f"模型：{MODEL_SIZE}")
     log_info(f"裝置：{DEVICE}:{DEVICE_INDEX}")

@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 param(
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$Sources
@@ -39,7 +39,9 @@ function Ensure-PipPackages {
     $required = @(
         @{ Module = "faster_whisper"; Package = "faster-whisper" },
         @{ Module = "yt_dlp"; Package = "yt-dlp[default]" },
-        @{ Module = "ctranslate2"; Package = "ctranslate2" }
+        @{ Module = "ctranslate2"; Package = "ctranslate2" },
+        @{ Module = "nvidia.cublas"; Package = "nvidia-cublas-cu12" },
+        @{ Module = "nvidia.cudnn"; Package = "nvidia-cudnn-cu12" }
     )
 
     $missing = @()
